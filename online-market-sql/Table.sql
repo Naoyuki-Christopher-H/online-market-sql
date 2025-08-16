@@ -1,5 +1,5 @@
--- Create Database with error handling
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'online_market_sql')
+-- Check if database exists and create it if it doesn't
+IF DB_ID('online_market_sql') IS NULL
 BEGIN
     BEGIN TRY
         CREATE DATABASE online_market_sql;
@@ -7,6 +7,7 @@ BEGIN
     END TRY
     BEGIN CATCH
         PRINT 'Error creating database: ' + ERROR_MESSAGE();
+        RETURN; -- Exit if database creation fails
     END CATCH
 END
 ELSE
@@ -19,7 +20,7 @@ USE online_market_sql;
 GO
 
 -- Create Customers Table with better constraints
-IF OBJECT_ID('Customers', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Customers')
 BEGIN
     BEGIN TRY
         CREATE TABLE Customers
@@ -46,7 +47,7 @@ END
 GO
 
 -- Create Products Table with better constraints
-IF OBJECT_ID('Products', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Products')
 BEGIN
     BEGIN TRY
         CREATE TABLE Products
@@ -72,7 +73,7 @@ END
 GO
 
 -- Create Orders Table with better constraints
-IF OBJECT_ID('Orders', 'U') IS NULL
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Orders')
 BEGIN
     BEGIN TRY
         CREATE TABLE Orders
@@ -103,7 +104,11 @@ END
 GO
 
 -- Create a stored procedure for safe customer insertion
-CREATE OR ALTER PROCEDURE sp_InsertCustomer
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertCustomer')
+DROP PROCEDURE sp_InsertCustomer;
+GO
+
+CREATE PROCEDURE sp_InsertCustomer
     @name VARCHAR(50),
     @last_name VARCHAR(50),
     @email VARCHAR(100),
@@ -135,7 +140,11 @@ END
 GO
 
 -- Create a stored procedure for safe product insertion
-CREATE OR ALTER PROCEDURE sp_InsertProduct
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_InsertProduct')
+DROP PROCEDURE sp_InsertProduct;
+GO
+
+CREATE PROCEDURE sp_InsertProduct
     @name VARCHAR(50),
     @description VARCHAR(200),
     @price DECIMAL(10,2),
@@ -171,7 +180,11 @@ END
 GO
 
 -- Create a stored procedure for placing orders with inventory check
-CREATE OR ALTER PROCEDURE sp_PlaceOrder
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_PlaceOrder')
+DROP PROCEDURE sp_PlaceOrder;
+GO
+
+CREATE PROCEDURE sp_PlaceOrder
     @customer_id INT,
     @product_id INT,
     @quantity INT
@@ -252,7 +265,11 @@ EXEC @result = sp_PlaceOrder 2, 3, 1;
 GO
 
 -- Create a view for order details
-CREATE OR ALTER VIEW vw_OrderDetails AS
+IF EXISTS (SELECT * FROM sys.views WHERE name = 'vw_OrderDetails')
+DROP VIEW vw_OrderDetails;
+GO
+
+CREATE VIEW vw_OrderDetails AS
 SELECT 
     o.order_id,
     c.customer_name + ' ' + c.customer_last_name AS customer_full_name,
@@ -302,7 +319,11 @@ END CATCH
 GO
 
 -- Safe product price update with transaction
-CREATE OR ALTER PROCEDURE sp_UpdateProductPrice
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_UpdateProductPrice')
+DROP PROCEDURE sp_UpdateProductPrice;
+GO
+
+CREATE PROCEDURE sp_UpdateProductPrice
     @product_id INT,
     @new_price DECIMAL(10,2)
 AS
@@ -336,7 +357,11 @@ END
 GO
 
 -- Safe customer deletion with transaction
-CREATE OR ALTER PROCEDURE sp_DeleteCustomer
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_DeleteCustomer')
+DROP PROCEDURE sp_DeleteCustomer;
+GO
+
+CREATE PROCEDURE sp_DeleteCustomer
     @customer_id INT
 AS
 BEGIN
@@ -387,7 +412,11 @@ END CATCH
 GO
 
 -- Create a function to calculate total sales
-CREATE OR ALTER FUNCTION fn_CalculateTotalSales(@product_id INT)
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'FN' AND name = 'fn_CalculateTotalSales')
+DROP FUNCTION fn_CalculateTotalSales;
+GO
+
+CREATE FUNCTION fn_CalculateTotalSales(@product_id INT)
 RETURNS DECIMAL(10,2)
 AS
 BEGIN
@@ -411,5 +440,32 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     PRINT 'Error calculating total sales: ' + ERROR_MESSAGE();
+END CATCH
+GO
+
+-- Display everything from Customers
+BEGIN TRY
+    SELECT * FROM Customers;
+END TRY
+BEGIN CATCH
+    PRINT 'Error retrieving customer data: ' + ERROR_MESSAGE();
+END CATCH
+GO
+
+-- Display everything from Products
+BEGIN TRY
+    SELECT * FROM Products;
+END TRY
+BEGIN CATCH
+    PRINT 'Error retrieving product data: ' + ERROR_MESSAGE();
+END CATCH
+GO
+
+-- Display everything from Orders
+BEGIN TRY
+    SELECT * FROM Orders;
+END TRY
+BEGIN CATCH
+    PRINT 'Error retrieving order data: ' + ERROR_MESSAGE();
 END CATCH
 GO
